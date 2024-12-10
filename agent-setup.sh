@@ -304,7 +304,7 @@ loki.process "add_labels_agentcis_backend_composer" {
       "service_name" = "composer-logs",
       "env"         = "$ENV",
       "hostname"    = "$HOSTNAME",
-      "source"      = "/home/agentcis/app/staging/current/storage/logs/*.log",
+      "source"      = "/home/agentcis/app/current/storage/logs/*.log",
     }
   }
   forward_to = [loki.write.local_loki.receiver]
