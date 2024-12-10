@@ -227,7 +227,7 @@ local.file_match "nginx_logs_file" {
 
 local.file_match "agentcis_backend_composer_logs_file" {
   path_targets = [
-    { "__path__" = "/home/agentcis/app/staging/current/storage/logs/*.log" },
+    { "__path__" = "/home/agentcis/app/current/storage/logs/*.log" },
   ]
   sync_period = "5s"
 }
