@@ -8,6 +8,8 @@ DEFAULT_ALLOY_CONFIG_DIR="/etc/alloy"
 DEFAULT_ALLOY_CONFIG_FILE="config.alloy"
 DEFAULT_LOG_RECEIVER_ENDPOINT="http://54.153.173.242:3100/loki/api/v1/push"
 SERVER_LOCAL_IP=54.153.173.242
+SYSTEM_LOG_FILE1="/var/log/syslog"
+SYSTEM_LOG_FILE2="/var/log/php8.0-fpm.log"
 
 # Color codes for output
 COLOR_GREEN='\033[0;32m'
@@ -237,6 +239,13 @@ local.file_match "agentcis_services_log_file" {
   sync_period = "5s"
 }
 
+local.file_match "agentcis_system_log_file" {
+  path_targets = [
+    { "__path__" = "/var/log/syslog" },
+    { "__path__" = "/var/log/php*fpm.log" },
+  ]
+  sync_period = "5s"
+}
 
 // Local Files - Send Logs to Loki
 loki.source.file "agentcis_webserver" {
@@ -253,6 +262,12 @@ loki.source.file "agentcis_services" {
   targets    = local.file_match.agentcis_services_log_file.targets
   forward_to = [loki.process.add_labels_agentcis_services.receiver]
 }
+
+loki.source.file "agentcis_system_os" {
+  targets    = local.file_match.agentcis_system_log_file.targets
+  forward_to = [loki.process.add_labels_agentcis_system_log.receiver]
+}
+
 
 // Add Labels for Local Files
 loki.process "add_labels_nginx_logs" {
@@ -316,6 +331,26 @@ loki.process "add_labels_agentcis_services" {
   forward_to = [loki.write.local_loki.receiver]
 }
 
+loki.process "add_labels_agentcis_system_log" {
+  stage.labels {
+    values = {
+      "job"          = "agentcis-system-os-and-software",
+      "service_name" = "agentcis-server-log",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      "job"         = "agentcis-system-os-and-software",
+      "service_name" = "agentcis-server-log",
+      "env"         = "$ENV",
+      "hostname"    = "$HOSTNAME",
+      "source"      = "/var/log/syslog-and-fpm",
+    }
+  }
+  forward_to = [loki.write.local_loki.receiver]
+}
+
 
 // Send Logs to Loki Remote API
 loki.write "local_loki" {
@@ -352,6 +387,20 @@ function restart_and_enable_alloy() {
     fi
 }
 
+post_setup_log_file_permission() {
+  print_yellow "Allowing read permission to system log files"
+    if sudo chmod +775 "$SYSTEM_LOG_FILE1"; then
+      print_success "Read permission updated successfully for $SYSTEM_LOG_FILE1"
+    else
+      print_error "Failed to update read permission for $SYSTEM_LOG_FILE1"
+    fi
+
+    if sudo chmod +775 "$SYSTEM_LOG_FILE2"; then
+      print_success "Read permission updated successfully for $SYSTEM_LOG_FILE2"
+    else
+      print_error "Failed to update read permission for $SYSTEM_LOG_FILE2"
+    fi
+}
 
 # Main function
 function main() {
@@ -361,6 +410,7 @@ function main() {
     install_grafana_alloy
     checking_old_config
     restart_and_enable_alloy
+    post_setup_log_file_permission
     print_success "Grafana Alloy setup completed successfully."
 }
 

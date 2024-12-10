@@ -1,25 +1,43 @@
 #!/bin/bash
 
-# Define repository URL and target directory
 REPO_URL="https://github.com/subashglobalyhub/monitoring-agent-setup.git"
-TARGET_DIR="monitoring-agent-setup"
+TARGET_DIR="$HOME/monitoring-agent-setup"
 TARGET_SCRIPT="agent-setup.sh"
 
-
 echo "Starting the repository clone and running the test.sh script..."
-git clone $REPO_URL
-if [ $? -eq 0 ]; then
-    echo "Repository cloned successfully."
+
+# Check if the directory already exists
+if [ -d "$TARGET_DIR" ]; then
+    echo "Directory '$TARGET_DIR' already exists. Pulling latest changes..."
     cd $TARGET_DIR
-    if [ -f "$TARGET_SCRIPT" ]; then
-        echo "Running test.sh script..."
-        chmod +x $TARGET_SCRIPT
-        ./$TARGET_SCRIPT -e production
-        echo "$TARGET_SCRIPT executed successfully."
+    git pull origin main
+    if [ $? -eq 0 ]; then
+        echo "Repository updated successfully."
     else
-        echo "$TARGET_SCRIPT script not found in the repository."
+        echo "Failed to pull the latest changes."
+        exit 1
     fi
 else
-    echo "Failed to clone the repository."
+    echo "Directory '$TARGET_DIR' does not exist. Cloning the repository..."
+    git clone $REPO_URL
+    if [ $? -eq 0 ]; then
+        echo "Repository cloned successfully."
+        cd $TARGET_DIR
+    else
+        echo "Failed to clone the repository."
+        exit 1
+    fi
 fi
+
+# Check if the target script exists and run it
+if [ -f "$TARGET_SCRIPT" ]; then
+    echo "Running $TARGET_SCRIPT script..."
+    cd $TARGET_DIR
+    chmod +x $TARGET_SCRIPT
+    ./$TARGET_SCRIPT -e production
+    echo "$TARGET_SCRIPT executed successfully."
+else
+    echo "$TARGET_SCRIPT script not found in the repository."
+fi
+
 echo "Script execution completed."
